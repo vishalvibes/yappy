@@ -12,7 +12,7 @@ When explaining a difficult concept or anything complex — data flow, architect
 
 ## Refactoring rules
 
-Applies to the entire monorepo — `backend/`, `frontend/`, and `supabase/`.
+Applies to the entire monorepo — `backend/`, `electron/`, and `supabase/`.
 
 Before refactoring, find existing tests that cover the behavior. If coverage is missing, propose minimal characterization tests that lock in current behavior.
 
@@ -32,16 +32,14 @@ Rules:
 
 ## What this repo is
 
-A **starter template**, not a product. It ships the wiring and four reference
-surfaces, nothing domain-specific. `/` is the Supabase email+password auth gate;
-signing in drops you into the app shell:
+A **Yappy** starter — Electron desktop + FastAPI + Supabase.
 
 | Route | Demonstrates | Backend |
 |-------|--------------|---------|
 | `/chat` | SSE streaming chat | `POST /chat/stream` |
 | `/inference` | one-shot completion | `POST /inference` |
 | `/todos` | auth-scoped CRUD + Inngest event | `/todos` |
-| `/health` | health matrix (frontend + API + Supabase + LLM + Inngest) | `GET /health/matrix` |
+| `/health` | health matrix (app + API + Supabase + LLM + Inngest) | `GET /health/matrix` |
 
 Chat/inference need OpenAI (`OPENAI_ENABLED=true` + `OPENAI_API_KEY` in
 `backend/.env`); without it they 503 and the matrix marks `llm` as `disabled`.
@@ -72,19 +70,19 @@ to neutralize this.
 
 Monorepo:
 - `backend/` — FastAPI, managed with **uv** (Python 3.12).
-- `frontend/` — Next.js (App Router) + Tailwind v4 + shadcn/ui (Radix base) + React Query.
+- `electron/` — Electron (Vite + vite-plugin-electron) + React + Tailwind v4 + React Query + shadcn/ui.
 - `supabase/` — local Postgres stack (config, migrations, seed) driven by the Supabase CLI.
 
 ## Commands
 
-- `make dev` — **one command to spin up everything** (`scripts/dev.sh`): Supabase + backend + frontend + Inngest Dev Server in one attachable tmux session. `make stop` tears it down; `make ps` / `make urls` inspect it. Needs Docker + tmux.
+- `make dev` — **one command to spin up everything** (`scripts/dev.sh`): Supabase + backend + Electron + Inngest Dev Server in one attachable tmux session. `make stop` tears it down; `make ps` / `make urls` inspect it. Needs Docker + tmux.
 - `make up` / `make down` — start/stop local Supabase (**needs Docker running**). `make up` == `supabase start`.
 - `make status` — print local Supabase URLs + keys (copy anon/service keys into `backend/.env`).
 - `make reset` — re-run migrations + seed.
 - `make backend` — FastAPI on :8000 (`uv run uvicorn app.main:app --reload`).
-- `make frontend` — Next.js on :3000 (`pnpm dev`).
+- `make electron` — Electron desktop app (`pnpm dev`).
 - Backend checks: `cd backend && uv run ruff check . && uv run pytest`. (If `uv run <script>` ever fails with `Failed to spawn`, the `.venv` was built at a different absolute path — `rm -rf backend/.venv && uv sync` fixes the stale shebangs.)
-- Frontend checks: `cd frontend && pnpm exec tsc --noEmit && pnpm lint`.
+- Electron checks: `cd electron && pnpm typecheck`.
 
 ## Testing / test user
 
@@ -94,13 +92,7 @@ Monorepo:
 - password: `testpass123`
 - id: `11111111-1111-1111-1111-111111111111` (owns the seeded demo todos)
 
-Same account the Playwright e2e suite expects.
-
-**Do not run the e2e suite automatically — only when the user explicitly asks.** Feel free to recommend running it (e.g. after touching auth or the sign-in flow), but wait for the go-ahead. The suite is intentionally **minimal**: a single auth smoke test (sign in at `/` → lands on `/chat`); it is not a full CRUD/chat regression suite. When the user asks, run it against the local stack (needs `make dev` up):
-
-```bash
-cd frontend && E2E_EMAIL=e2e-test@example.com E2E_PASSWORD=testpass123 pnpm e2e
-```
+**Never run Playwright / e2e scripts** (`pnpm e2e`, `playwright test`, etc.) — not automatically and not when asked.
 
 If you sign in as this user right after `make reset`, force a todos refetch (reload) — React Query may hold a stale empty list from before auth.
 
@@ -109,10 +101,10 @@ If you sign in as this user right after `make reset`, force a todos refetch (rel
 There is no cloud Supabase MCP configured (removed — it targets remote projects only, can't reach the local stack). Query the **local** Postgres directly through the Supabase DB Docker container:
 
 ```bash
-docker exec supabase_db_template psql -U postgres -d postgres -c "select id, email, last_sign_in_at from auth.users;"
+docker exec supabase_db_yappy psql -U postgres -d postgres -c "select id, email, last_sign_in_at from auth.users;"
 ```
 
-- Container name: `supabase_db_template` (find it with `docker ps --filter name=supabase_db`).
+- Container name: `supabase_db_yappy` (find it with `docker ps --filter name=supabase_db`).
 - `psql` is **not** installed on the host — always go through `docker exec`.
 - Direct connection string (if a host `psql`/tool ever exists): `postgresql://postgres:postgres@127.0.0.1:54322/postgres`.
 - Signed-in / auth users live in the `auth.users` table; app tables are in `public`.
@@ -139,14 +131,14 @@ Greptile only reviews committed branch-vs-base diffs (cloud); it is not a local/
 
 Each subtree has its own `CLAUDE.md` (auto-loads when Claude works in that folder):
 - `backend/CLAUDE.md` — FastAPI conventions (assembly point, settings, Supabase factory, auth, fat routers).
-- `frontend/CLAUDE.md` — Next.js/React Query/shadcn/client-auth conventions (also imports `frontend/AGENTS.md`).
+- `electron/CLAUDE.md` — Electron/React/Tailwind/React Query conventions.
 - `supabase/CLAUDE.md` — migrations, RLS, schema, Google OAuth config.
 
 ## Env / secrets
 
-- **Three separate env files, by consumer** (all gitignored; commit only the `.env.example` of each):
+- **Env files by consumer** (all gitignored; commit only the `.env.example` of each):
   - **Root `.env` — MCP / tooling only** (`LINEAR_API_KEY`, `SUPABASE_PROJECT_REF`, `SUPABASE_ACCESS_TOKEN`). Claude Code expands `${VAR}` in `.mcp.json` from the **shell env**, not from this file. `LINEAR_API_KEY` is now stored in the **macOS login Keychain** (`security add-generic-password -a "$USER" -s LINEAR_API_KEY -w <key> -U`); a `claude()` wrapper function in `~/.zshrc` calls `load_keychain_secrets` to export it before launching the real `claude`, so the Linear MCP connects automatically with no manual sourcing. For the other vars (or a one-off shell), source manually: `set -a; source .env; set +a`.
   - **`backend/.env` — backend config** (`cp backend/.env.example backend/.env`). `backend/app/main.py` `load_dotenv()`s `backend/.env` (`parents[1]/.env`).
-  - **`frontend/.env.local` — frontend config**, read only by Next.js (keeps backend secrets out of the Next process).
-- Local Supabase keys come from `make status` (a.k.a. `supabase status`). **New key standard** (CLI now issues these; legacy anon/service_role deprecated end-2026): frontend uses `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (`sb_publishable_…`, replaces anon; falls back to `NEXT_PUBLIC_SUPABASE_ANON_KEY`); backend uses `SUPABASE_SECRET_KEY` (`sb_secret_…`, replaces service_role) plus `SUPABASE_JWT_SECRET` (HS256 fallback while the local stack has no asymmetric signing keys). Backend token verification derives its JWKS URL from `SUPABASE_URL` (override with `SUPABASE_JWKS_URL`).
+  - **`electron/.env` — Electron renderer config** (Vite `VITE_*` vars), when needed.
+- Local Supabase keys come from `make status` (a.k.a. `supabase status`). **New key standard** (CLI now issues these; legacy anon/service_role deprecated end-2026): client apps use `sb_publishable_…`; backend uses `SUPABASE_SECRET_KEY` (`sb_secret_…`, replaces service_role) plus `SUPABASE_JWT_SECRET` (HS256 fallback while the local stack has no asymmetric signing keys). Backend token verification derives its JWKS URL from `SUPABASE_URL` (override with `SUPABASE_JWKS_URL`).
 - Google OAuth: `[auth.external.google]` in `config.toml` reads `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID`/`_SECRET` from the env — put them in `supabase/.env` (gitignored) and load before `make up`. `skip_nonce_check = true` is required for local Google sign-in.

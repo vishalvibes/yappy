@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# template dev orchestrator — one command to spin up the whole local stack.
+# Yappy dev orchestrator — one command to spin up the whole local stack.
 #
-# Inspired by the harmony CLI: brings up infra (Docker + Supabase + Inngest)
-# then launches every long-running process in a single attachable tmux session.
+# Brings up infra (Docker + Supabase + Inngest) then launches every long-running
+# process in a single attachable tmux session.
 #
 #   scripts/dev.sh [command]
 #
@@ -12,16 +12,15 @@
 #   stop     Stop tmux processes + Supabase
 #   status   Show what's running
 #   urls     Print all local service URLs
-#   open     Open a service in the browser:  open [backend|frontend|inngest|studio]
-#   logs     Tail a pane's logs:             logs [backend|frontend|inngest]
+#   open     Open a service in the browser:  open [backend|inngest|studio]
+#   logs     Tail a pane's logs:             logs [backend|electron|inngest]
 #
 set -euo pipefail
 
 # --- Paths -------------------------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-SESSION="template"
-PORT_FILE="/tmp/template.frontend.port"   # actual frontend port, written at startup
+SESSION="yappy"
 
 # --- Colors / print helpers --------------------------------------------------
 RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[1;33m'
@@ -35,13 +34,6 @@ warn()    { echo -e "${YELLOW}⚠️  $1${NC}"; }
 err()     { echo -e "${RED}❌ $1${NC}" 1>&2; }
 die()     { err "$1"; exit 1; }
 header()  { echo -e "\n${MAGENTA}${BOLD}━━━ $1 ━━━${NC}\n"; }
-
-# --- Ports -------------------------------------------------------------------
-# First free TCP port at/above $1 (Next.js auto-increments from 3000 otherwise,
-# so we pin it explicitly and report the real value everywhere).
-free_port() { local p="${1:-3000}"; while lsof -i ":$p" -sTCP:LISTEN >/dev/null 2>&1; do p=$((p + 1)); done; echo "$p"; }
-# The frontend port chosen for the current session (defaults to 3000 if unknown).
-fe_port() { [ -f "$PORT_FILE" ] && cat "$PORT_FILE" 2>/dev/null || echo 3000; }
 
 # --- Preflight ---------------------------------------------------------------
 need() { command -v "$1" >/dev/null 2>&1; }
@@ -93,14 +85,14 @@ start_supabase() {
 
 # --- Dashboard pane ----------------------------------------------------------
 dashboard_script() {
-  local path="/tmp/template_dashboard.sh"
+  local path="/tmp/yappy_dashboard.sh"
   cat > "$path" <<DASH
 #!/usr/bin/env bash
 clear
-echo -e "${MAGENTA}${BOLD}  template — local dev${NC}\n"
+echo -e "${MAGENTA}${BOLD}  Yappy — local dev${NC}\n"
 echo -e "${CYAN}${BOLD}URLs:${NC}"
 echo -e "  ${WHITE}Backend${NC}     http://localhost:8000  (docs: /docs)"
-echo -e "  ${WHITE}Frontend${NC}    http://localhost:$FE_PORT"
+echo -e "  ${WHITE}Electron${NC}    desktop app (pnpm dev)"
 echo -e "  ${WHITE}Inngest${NC}     http://localhost:8288"
 echo -e "  ${WHITE}Supabase${NC}    http://localhost:54323  (Studio)"
 echo ""
@@ -118,7 +110,7 @@ DASH
 
 # --- Main: dev ---------------------------------------------------------------
 cmd_dev() {
-  header "🚀 Starting template dev environment"
+  header "🚀 Starting Yappy dev environment"
   check_deps
   start_docker
   start_supabase
@@ -128,20 +120,14 @@ cmd_dev() {
     exec tmux attach -t "$SESSION"
   fi
 
-  # Pin the frontend to the first free port (avoids the silent 3000→3001 hop
-  # when another project already holds 3000) and record it for status/urls.
-  FE_PORT="$(free_port 3000)"
-  echo "$FE_PORT" > "$PORT_FILE"
-  [ "$FE_PORT" = "3000" ] || info "Port 3000 busy — frontend will use :$FE_PORT"
-
   local dash; dash="$(dashboard_script)"
   step "Creating tmux session ($SESSION)..."
 
   # Pane 0: backend (FastAPI + Inngest serve at /api/inngest)
   tmux new-session -d -s "$SESSION" -n main -c "$REPO_ROOT/backend" \
     "uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
-  # Pane 1: frontend (Next.js) — PORT env pins the dev server deterministically
-  tmux split-window -h -t "$SESSION" -c "$REPO_ROOT/frontend" "PORT=$FE_PORT pnpm dev"
+  # Pane 1: Electron desktop app (electron-vite)
+  tmux split-window -h -t "$SESSION" -c "$REPO_ROOT/electron" "pnpm dev"
   # Pane 2: Inngest Dev Server (also serves the MCP endpoint on :8288)
   tmux select-pane -t 0
   tmux split-window -v -t "$SESSION" -c "$REPO_ROOT" \
@@ -152,7 +138,7 @@ cmd_dev() {
   tmux select-layout -t "$SESSION" tiled
 
   tmux select-pane -t "$SESSION:0.0" -T backend
-  tmux select-pane -t "$SESSION:0.1" -T frontend
+  tmux select-pane -t "$SESSION:0.1" -T electron
   tmux select-pane -t "$SESSION:0.2" -T inngest
   tmux select-pane -t "$SESSION:0.3" -T dashboard
 
@@ -167,7 +153,7 @@ cmd_dev() {
 
   success "Session created"
   echo -e "\n  ${CYAN}╔══════════╦══════════╗${NC}"
-  echo -e "  ${CYAN}║${NC} backend  ${CYAN}║${NC} frontend ${CYAN}║${NC}"
+  echo -e "  ${CYAN}║${NC} backend  ${CYAN}║${NC} electron ${CYAN}║${NC}"
   echo -e "  ${CYAN}╠══════════╬══════════╣${NC}"
   echo -e "  ${CYAN}║${NC} inngest  ${CYAN}║${NC} dashboard${CYAN}║${NC}"
   echo -e "  ${CYAN}╚══════════╩══════════╝${NC}\n"
@@ -177,7 +163,7 @@ cmd_dev() {
 
 # --- Main: stop --------------------------------------------------------------
 cmd_stop() {
-  header "🛑 Stopping template dev environment"
+  header "🛑 Stopping Yappy dev environment"
   if tmux has-session -t "$SESSION" 2>/dev/null; then
     step "Killing tmux session..."
     tmux kill-session -t "$SESSION" 2>/dev/null || true
@@ -187,9 +173,7 @@ cmd_stop() {
   fi
   # Reap orphaned service processes. A crashed `uvicorn --reload` worker can
   # outlive its pane and keep holding :8000, so kill-session alone misses it.
-  # Only touch ports we own (frontend port is the one we pinned, never a
-  # bystander's 3000).
-  for port in 8000 8288 "$(fe_port)"; do
+  for port in 8000 8288 5173; do
     pids="$(lsof -ti ":$port" -sTCP:LISTEN 2>/dev/null || true)"
     if [ -n "$pids" ]; then
       step "Freeing port $port..."
@@ -224,7 +208,7 @@ cmd_stop() {
   else
     success "Supabase stopped"
   fi
-  rm -f /tmp/template_dashboard.sh "$PORT_FILE"
+  rm -f /tmp/yappy_dashboard.sh
   echo ""; success "Cleanup complete 🧹"
 }
 
@@ -235,11 +219,10 @@ row() { # $1 label, $2 up?, $3 detail
   else echo -e "  ${RED}❌ ${1}${NC}\tnot running"; fi
 }
 cmd_status() {
-  echo -e "\n${CYAN}${BOLD}template status${NC}\n"
+  echo -e "\n${CYAN}${BOLD}Yappy status${NC}\n"
   tmux has-session -t "$SESSION" 2>/dev/null && row "tmux    " 1 "session '$SESSION'" || row "tmux    " 0
   port_up 8000  && row "backend " 1 "http://localhost:8000"  || row "backend " 0
-  local fp; fp="$(fe_port)"
-  port_up "$fp" && row "frontend" 1 "http://localhost:$fp"   || row "frontend" 0
+  pgrep -f "vite-plugin-electron|Electron.app|/electron " >/dev/null 2>&1 && row "electron" 1 "desktop app" || row "electron" 0
   port_up 8288  && row "inngest " 1 "http://localhost:8288"  || row "inngest " 0
   ( cd "$REPO_ROOT" && supabase status >/dev/null 2>&1 ) && row "supabase" 1 "http://localhost:54323" || row "supabase" 0
   echo ""
@@ -247,27 +230,26 @@ cmd_status() {
 
 # --- Main: urls / open / logs ------------------------------------------------
 cmd_urls() {
-  echo -e "\n${CYAN}${BOLD}template URLs${NC}\n"
+  echo -e "\n${CYAN}${BOLD}Yappy URLs${NC}\n"
   echo -e "  ${WHITE}Backend${NC}        http://localhost:8000"
   echo -e "  ${WHITE}Backend docs${NC}   http://localhost:8000/docs"
-  echo -e "  ${WHITE}Frontend${NC}       http://localhost:$(fe_port)"
+  echo -e "  ${WHITE}Electron${NC}       desktop app (make electron)"
   echo -e "  ${WHITE}Inngest${NC}        http://localhost:8288"
   echo -e "  ${WHITE}Supabase${NC}       http://localhost:54323\n"
 }
 cmd_open() {
-  case "${1:-frontend}" in
+  case "${1:-backend}" in
     backend|api|docs) open "http://localhost:8000/docs" ;;
-    frontend|web)     open "http://localhost:$(fe_port)" ;;
     inngest)          open "http://localhost:8288" ;;
     studio|supabase)  open "http://localhost:54323" ;;
-    *) die "Unknown service '$1' (backend|frontend|inngest|studio)" ;;
+    *) die "Unknown service '$1' (backend|inngest|studio)" ;;
   esac
 }
 cmd_logs() {
   tmux has-session -t "$SESSION" 2>/dev/null || die "No session — start with: make dev"
   local svc="${1:-backend}" idx
   idx="$(tmux list-panes -t "$SESSION" -F "#{pane_index} #{pane_title}" | awk -v s="$svc" '$2==s{print $1}')"
-  [ -n "$idx" ] || die "Unknown pane '$svc' (backend|frontend|inngest|dashboard)"
+  [ -n "$idx" ] || die "Unknown pane '$svc' (backend|electron|inngest|dashboard)"
   echo -e "${CYAN}${BOLD}Logs: $svc${NC} ${BLUE}(last 100 lines)${NC}\n"
   tmux capture-pane -t "$SESSION.$idx" -p -S -100
 }

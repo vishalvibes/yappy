@@ -22,7 +22,7 @@ logger.setLevel(logging.ERROR)
 is_production = os.getenv("INNGEST_IS_PRODUCTION", "false").lower() == "true"
 
 inngest_client = inngest.Inngest(
-    app_id="template-backend",
+    app_id="yappy-backend",
     logger=logger,
     is_production=is_production,
 )

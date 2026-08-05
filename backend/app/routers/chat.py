@@ -9,7 +9,7 @@ the app:
 - ``POST /chat/stream`` the same multi-turn chat as Server-Sent Events.
 
 Nothing here touches the database — it is a pure passthrough to
-``app/utils/llm.py`` so the template shows the wiring, not a domain model.
+``app/utils/llm.py`` so Yappy shows the wiring, not a domain model.
 """
 
 from fastapi import APIRouter, Depends, HTTPException

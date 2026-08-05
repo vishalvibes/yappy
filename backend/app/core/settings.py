@@ -14,13 +14,13 @@ def _bool_env(name: str, default: str = "false") -> bool:
 
 class Settings:
     # --- App -----------------------------------------------------------------
-    APP_NAME: str = os.getenv("APP_NAME", "template-backend")
+    APP_NAME: str = os.getenv("APP_NAME", "yappy-backend")
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "local")  # local | staging | production
     PORT: int = int(os.getenv("PORT", "8000"))
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 
     # --- CORS ----------------------------------------------------------------
-    # Comma-separated list of allowed origins for the browser frontend.
+    # Comma-separated list of allowed origins (Electron Vite / web clients).
     CORS_ORIGINS: list[str] = [
         o.strip()
         for o in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")

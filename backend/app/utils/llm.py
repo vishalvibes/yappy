@@ -61,8 +61,7 @@ async def stream_chat_completion(
 ) -> AsyncGenerator[str, None]:
     """Stream a chat completion as SSE frames.
 
-    Emits the event contract the house frontends consume (see
-    frontend/src/lib/chat-stream.ts):
+    Emits the event contract SSE clients consume:
 
         {"type": "response.created"}
         {"type": "llm.response.init"}

@@ -1,10 +1,10 @@
 # Frontend
 
-Generic frontend working rules. Stack-specific conventions live in `frontend/CLAUDE.md`.
+Generic frontend working rules. Stack-specific conventions live in `electron/CLAUDE.md`.
 
 ## Dev server
 
-- Never start a dev server (`pnpm dev` / `pnpm run dev`). Assume one is already running.
+- Never start a dev server (`pnpm dev` / `pnpm run dev` / `make electron`). Assume one is already running.
 
 ## Builds
 

@@ -1686,71 +1686,6 @@ wheels = [
 ]
 
 [[package]]
-name = "template-backend"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "ddgs" },
-    { name = "fastapi" },
-    { name = "httpx" },
-    { name = "inngest" },
-    { name = "loguru" },
-    { name = "openai" },
-    { name = "pydantic", extra = ["email"] },
-    { name = "pyjwt" },
-    { name = "python-dotenv" },
-    { name = "supabase" },
-    { name = "tavily-python" },
-    { name = "uvicorn", extra = ["standard"] },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "ruff" },
-]
-test = [
-    { name = "deepdiff" },
-    { name = "psycopg2-binary" },
-    { name = "pyjwt" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-httpx" },
-    { name = "pytest-xdist" },
-    { name = "pyyaml" },
-    { name = "testcontainers" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ddgs", specifier = ">=9.14.4" },
-    { name = "fastapi", specifier = ">=0.115.12" },
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "inngest", specifier = ">=0.5.19" },
-    { name = "loguru", specifier = ">=0.7.3" },
-    { name = "openai", specifier = ">=2.46.0" },
-    { name = "pydantic", extras = ["email"], specifier = ">=2.11.7" },
-    { name = "pyjwt", specifier = ">=2.8.0" },
-    { name = "python-dotenv", specifier = ">=1.0.1" },
-    { name = "supabase", specifier = ">=2.27.1" },
-    { name = "tavily-python", specifier = ">=0.7.26" },
-    { name = "uvicorn", extras = ["standard"], specifier = ">=0.30.6" },
-]
-
-[package.metadata.requires-dev]
-dev = [{ name = "ruff", specifier = ">=0.14.0" }]
-test = [
-    { name = "deepdiff", specifier = ">=8.0.0" },
-    { name = "psycopg2-binary", specifier = ">=2.9.0" },
-    { name = "pyjwt", specifier = ">=2.8.0" },
-    { name = "pytest", specifier = ">=8.0.0" },
-    { name = "pytest-asyncio", specifier = ">=0.23.0" },
-    { name = "pytest-httpx", specifier = ">=0.35.0" },
-    { name = "pytest-xdist", specifier = ">=3.0.0" },
-    { name = "pyyaml", specifier = ">=6.0.0" },
-    { name = "testcontainers", extras = ["postgres"], specifier = ">=4.0.0" },
-]
-
-[[package]]
 name = "testcontainers"
 version = "4.14.2"
 source = { registry = "https://pypi.org/simple" }
@@ -2098,6 +2033,71 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/a0/4f/ac12fda57a55068a094ec42851fb0a40e8489d8941863d517452de62e507/wrapt-2.2.2-cp314-cp314t-win_amd64.whl", hash = "sha256:d09db0f7e8357060d3c38fc22a018aba683a796bf184360fd1a58f6fc180dc77", size = 82462, upload-time = "2026-06-20T23:49:21.631Z" },
     { url = "https://files.pythonhosted.org/packages/48/a7/df732dac86d9b2027c56bd163dbc883e037b16c3469614752e148d219c61/wrapt-2.2.2-cp314-cp314t-win_arm64.whl", hash = "sha256:f32fe639c39561ccc187bcae17e9271be0eb45f1c2952510d2f29b33ab577347", size = 81182, upload-time = "2026-06-20T23:49:23.199Z" },
     { url = "https://files.pythonhosted.org/packages/6e/d2/6317eb6d4554855bbf12d61857774af34747bf88a42c19bf306de67e2fa3/wrapt-2.2.2-py3-none-any.whl", hash = "sha256:5bad217350f19ce99ca5b5e71d406765ea86fe541628426772b657375ee1c048", size = 61460, upload-time = "2026-06-20T23:49:42.966Z" },
+]
+
+[[package]]
+name = "yappy-backend"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "ddgs" },
+    { name = "fastapi" },
+    { name = "httpx" },
+    { name = "inngest" },
+    { name = "loguru" },
+    { name = "openai" },
+    { name = "pydantic", extra = ["email"] },
+    { name = "pyjwt" },
+    { name = "python-dotenv" },
+    { name = "supabase" },
+    { name = "tavily-python" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "ruff" },
+]
+test = [
+    { name = "deepdiff" },
+    { name = "psycopg2-binary" },
+    { name = "pyjwt" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-httpx" },
+    { name = "pytest-xdist" },
+    { name = "pyyaml" },
+    { name = "testcontainers" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ddgs", specifier = ">=9.14.4" },
+    { name = "fastapi", specifier = ">=0.115.12" },
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "inngest", specifier = ">=0.5.19" },
+    { name = "loguru", specifier = ">=0.7.3" },
+    { name = "openai", specifier = ">=2.46.0" },
+    { name = "pydantic", extras = ["email"], specifier = ">=2.11.7" },
+    { name = "pyjwt", specifier = ">=2.8.0" },
+    { name = "python-dotenv", specifier = ">=1.0.1" },
+    { name = "supabase", specifier = ">=2.27.1" },
+    { name = "tavily-python", specifier = ">=0.7.26" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.30.6" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "ruff", specifier = ">=0.14.0" }]
+test = [
+    { name = "deepdiff", specifier = ">=8.0.0" },
+    { name = "psycopg2-binary", specifier = ">=2.9.0" },
+    { name = "pyjwt", specifier = ">=2.8.0" },
+    { name = "pytest", specifier = ">=8.0.0" },
+    { name = "pytest-asyncio", specifier = ">=0.23.0" },
+    { name = "pytest-httpx", specifier = ">=0.35.0" },
+    { name = "pytest-xdist", specifier = ">=3.0.0" },
+    { name = "pyyaml", specifier = ">=6.0.0" },
+    { name = "testcontainers", extras = ["postgres"], specifier = ">=4.0.0" },
 ]
 
 [[package]]

@@ -1,6 +1,6 @@
-"""Supabase Auth — verify the JWT the frontend sends and pull out the user id.
+"""Supabase Auth — verify the JWT the client sends and pull out the user id.
 
-The frontend signs users in with the Supabase publishable key and forwards the
+The client signs users in with the Supabase publishable key and forwards the
 resulting access token as `Authorization: Bearer <jwt>`. Routes depend on
 `get_current_user_id` to authenticate the caller and scope queries by user.
 
