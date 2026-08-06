@@ -90,9 +90,8 @@ function menuBarHeight() {
 }
 
 /**
- * Collapsed island fills the notch strip: same height as the menu bar,
- * roughly notch width, so the grey handle sits *in* the black notch zone
- * instead of hanging below it.
+ * Collapsed island: menu-bar height. Width may stay at last expanded size
+ * (avoids left ghost); renderer limits hover via setIgnoreMouseEvents.
  */
 function sizesForDisplay(): Record<IslandMode, IslandSize> {
   const notchH = menuBarHeight()
@@ -116,9 +115,8 @@ function placeIsland(size: IslandSize) {
 
 function resizeIsland(mode: IslandMode) {
   const size = { ...sizesForDisplay()[mode] }
-  // Collapse used to shrink 360→184 and recentre x while the handle was already
-  // painted — macOS composites one frame of the bar at the old origin (left ghost).
-  // Keep the current width so only height changes; x stays put. Handle stays centered.
+  // Height-only collapse — keep width/x to avoid a one-frame left ghost handle.
+  // Renderer limits the hot zone to the notch band (setIgnoreMouseEvents).
   if (mode === "collapsed" && win && !win.isDestroyed()) {
     size.width = win.getBounds().width
   }
@@ -244,6 +242,14 @@ app.whenReady().then(() => {
   ipcMain.handle("island:resize-to", (_event, size: IslandSize) => resizeIslandTo(size))
   ipcMain.handle("island:get-sizes", () => sizesForDisplay())
   ipcMain.handle("island:menu-bar-height", () => menuBarHeight())
+  ipcMain.handle(
+    "island:set-ignore-mouse-events",
+    (_event, ignore: boolean, forward?: boolean) => {
+      if (!win || win.isDestroyed()) return
+      if (ignore) win.setIgnoreMouseEvents(true, { forward: forward ?? true })
+      else win.setIgnoreMouseEvents(false)
+    },
+  )
   // macOS: prompt once so getUserMedia in the renderer can read levels.
   ipcMain.handle("media:ask-microphone", async () => {
     if (process.platform !== "darwin") return true

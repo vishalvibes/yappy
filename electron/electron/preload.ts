@@ -33,6 +33,12 @@ contextBridge.exposeInMainWorld("ipcRenderer", {
     }>,
   getMenuBarHeight: () =>
     ipcRenderer.invoke("island:menu-bar-height") as Promise<number>,
+  setIgnoreMouseEvents: (ignore: boolean, opts?: { forward?: boolean }) =>
+    ipcRenderer.invoke(
+      "island:set-ignore-mouse-events",
+      ignore,
+      opts?.forward,
+    ) as Promise<void>,
   askMicrophoneAccess: () =>
     ipcRenderer.invoke("media:ask-microphone") as Promise<boolean>,
   getPendingDeepLink: () =>

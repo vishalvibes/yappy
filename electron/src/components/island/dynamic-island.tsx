@@ -26,6 +26,8 @@ const AUTH_GAP_BELOW_NOTCH = 12
 const YAP_WIDTH = 360
 const YAP_BOTTOM_PAD = 24
 const YAP_GAP_BELOW_NOTCH = 10
+/** Collapsed hover band — matches notch width, not the full pill window. */
+const NOTCH_HIT_WIDTH = 184
 
 function pickRecorderMime(): string {
   if (typeof MediaRecorder === "undefined") return ""
@@ -177,11 +179,9 @@ export function DynamicIsland() {
   }
 
   function onEnter() {
+    // Cancel pending collapse when the pointer returns to an open island.
     pointerInside.current = true
     clearLeaveTimer()
-    if (mode === "collapsed") {
-      void resize(user ? "pill" : "expanded")
-    }
   }
 
   /**
@@ -197,6 +197,46 @@ export function DynamicIsland() {
       void resize("collapsed")
     }, 280)
   }
+
+  /** Collapsed window may stay pill-wide (no ghost). Only the center notch band expands. */
+  useEffect(() => {
+    if (mode !== "collapsed") {
+      void window.ipcRenderer.setIgnoreMouseEvents(false)
+      return
+    }
+
+    void window.ipcRenderer.setIgnoreMouseEvents(true, { forward: true })
+
+    let opened = false
+
+    function expandFromNotch() {
+      if (opened) return
+      opened = true
+      pointerInside.current = true
+      clearLeaveTimer()
+      void window.ipcRenderer.setIgnoreMouseEvents(false)
+      void resize(user ? "pill" : "expanded")
+    }
+
+    function onMove(e: MouseEvent) {
+      if (opened) return
+      const w = window.innerWidth
+      const hit = Math.min(NOTCH_HIT_WIDTH, w)
+      const left = (w - hit) / 2
+      const inNotch = e.clientX >= left && e.clientX <= left + hit
+      if (inNotch) {
+        expandFromNotch()
+      } else {
+        void window.ipcRenderer.setIgnoreMouseEvents(true, { forward: true })
+      }
+    }
+
+    window.addEventListener("mousemove", onMove)
+    return () => {
+      window.removeEventListener("mousemove", onMove)
+      void window.ipcRenderer.setIgnoreMouseEvents(false)
+    }
+  }, [mode, user, resize])
 
   function maybeCollapseAfterUnpin() {
     if (!pointerInside.current) {
@@ -270,12 +310,9 @@ export function DynamicIsland() {
     }
     return new Promise((resolve) => {
       recorder.onstop = () => {
-        // Sarvam rejects parameterized types like audio/webm;codecs=opus.
-        const raw = recorder.mimeType || "audio/webm"
-        const type = raw.split(";", 1)[0]!.trim() || "audio/webm"
         const blob =
           chunksRef.current.length > 0
-            ? new Blob(chunksRef.current, { type })
+            ? new Blob(chunksRef.current, { type: "audio/webm" })
             : null
         chunksRef.current = []
         stopMic()
