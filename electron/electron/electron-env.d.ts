@@ -17,6 +17,15 @@ interface YappyIpcRenderer {
   send: (channel: string, ...args: unknown[]) => void
   invoke: <T = unknown>(channel: string, ...args: unknown[]) => Promise<T>
   openExternal: (url: string) => Promise<void>
+  resizeIsland: (
+    mode: "collapsed" | "pill" | "expanded",
+  ) => Promise<{ width: number; height: number }>
+  getIslandSizes: () => Promise<{
+    collapsed: { width: number; height: number }
+    pill: { width: number; height: number }
+    expanded: { width: number; height: number }
+  }>
+  getMenuBarHeight: () => Promise<number>
 }
 
 interface Window {

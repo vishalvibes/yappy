@@ -122,10 +122,19 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    background: transparent !important;
+    margin: 0;
+    overflow: hidden;
+    user-select: none;
   }
   html {
     @apply font-sans;
+    background: transparent !important;
+  }
+  #root {
+    height: 100%;
+    background: transparent;
   }
 }
 

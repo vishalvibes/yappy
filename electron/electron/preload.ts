@@ -18,4 +18,14 @@ contextBridge.exposeInMainWorld("ipcRenderer", {
     return ipcRenderer.invoke(channel, ...omit)
   },
   openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
+  resizeIsland: (mode: "collapsed" | "pill" | "expanded") =>
+    ipcRenderer.invoke("island:resize", mode),
+  getIslandSizes: () =>
+    ipcRenderer.invoke("island:get-sizes") as Promise<{
+      collapsed: { width: number; height: number }
+      pill: { width: number; height: number }
+      expanded: { width: number; height: number }
+    }>,
+  getMenuBarHeight: () =>
+    ipcRenderer.invoke("island:menu-bar-height") as Promise<number>,
 })

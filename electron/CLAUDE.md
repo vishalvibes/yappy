@@ -1,33 +1,24 @@
-Yappy desktop — Electron (Vite + vite-plugin-electron) + React + Tailwind v4 + React Query + shadcn/ui + Supabase auth.
+Yappy desktop — Electron notch / Dynamic Island shell (Clicky-inspired).
 
-Same surfaces as the old web template: auth gate, chat (SSE), inference, todos, health.
+Vite + vite-plugin-electron + React + Tailwind + React Query + Supabase auth.
 
-Generic UI rules: see `../specs/frontend.md`. Root `../CLAUDE.md` still applies.
+## Island UX
+
+- Collapsed: thin bar tucked under the macOS notch (`island:resize` → `collapsed`)
+- Hover: expands to pill (prompts) or expanded panel (auth / drop zone)
+- Dock icon hidden; always-on-top panel window
 
 ## Commands
 
 - `make electron` — `pnpm dev`
-- Checks: `cd electron && pnpm typecheck`
 - Env: `cp electron/.env.example electron/.env` (keys from `make status`)
 
 ## Layout
 
 ```
 electron/
-  electron/          # main + preload
-  src/               # React renderer (@/*)
-    components/      # app-shell, auth, chat, todos, ui/...
-    hooks/           # React Query hooks by verb
-    lib/             # api, supabase, chat-stream, query-client
-  index.html
-  vite.config.ts
+  electron/main.ts      # notch BrowserWindow + resize IPC
+  electron/preload.ts
+  src/components/island/dynamic-island.tsx
+  src/App.tsx           # island is the root UI
 ```
-
-## Conventions
-
-- HashRouter: `/` auth gate → `/chat` | `/inference` | `/todos` | `/health`
-- shadcn in `components/ui`; reuse before create
-- React Query: singleton `queryClient` in `src/core/query-client.ts` (persisted localStorage), wrapped by `Providers`
-- Auth: client-only Supabase (`lib/supabase.ts` + `AuthProvider`); `apiFetch` / `apiClient` attach Bearer
-- Chat streaming: `streamChat` in `lib/chat-stream.ts` (raw fetch + SSE)
-- Env: `VITE_API_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`
