@@ -20,12 +20,18 @@ interface YappyIpcRenderer {
   resizeIsland: (
     mode: "collapsed" | "pill" | "expanded",
   ) => Promise<{ width: number; height: number }>
+  resizeIslandTo: (size: {
+    width: number
+    height: number
+  }) => Promise<{ width: number; height: number }>
   getIslandSizes: () => Promise<{
     collapsed: { width: number; height: number }
     pill: { width: number; height: number }
     expanded: { width: number; height: number }
   }>
   getMenuBarHeight: () => Promise<number>
+  getPendingDeepLink: () => Promise<string | null>
+  consumeDeepLink: (url?: string) => void
 }
 
 interface Window {

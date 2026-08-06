@@ -6,7 +6,7 @@
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "vite",
+    "dev": "env -u ELECTRON_RUN_AS_NODE -u ATOM_SHELL_INTERNAL_RUN_AS_NODE vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"

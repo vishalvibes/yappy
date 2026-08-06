@@ -29,7 +29,7 @@ from app.clients.supabase import (
 )
 from app.core.settings import settings
 from app.event_handlers.todos_event_handlers import handle_todo_created
-from app.routers import chat, health, todos
+from app.routers import chat, health, oauth, todos
 
 logger.remove()
 logger.add(sys.stderr, level=settings.LOG_LEVEL)
@@ -60,6 +60,7 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(chat.router)
 app.include_router(todos.router)
+app.include_router(oauth.router)
 
 # Inngest: expose durable functions at /api/inngest (discovered/synced by the
 # Dev Server in local dev). Register one handler per domain here.

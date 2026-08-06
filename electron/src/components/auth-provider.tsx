@@ -1,21 +1,27 @@
 import type { Session, User } from "@supabase/supabase-js"
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
 
+import { completeOAuthCallback } from "@/core/auth-callback"
+import { GOOGLE_OAUTH_REDIRECT_TO } from "@/core/auth-redirect"
 import { supabase, supabaseConfigured, supabaseConfigError } from "@/lib/supabase"
+
+const GOOGLE_LOADING_TIMEOUT_MS = 30_000
 
 type AuthContextValue = {
   session: Session | null
   user: User | null
   loading: boolean
+  googlePending: boolean
   configError: string | null
-  signIn: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string) => Promise<{ needsConfirm: boolean }>
+  signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
 }
 
@@ -24,6 +30,28 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [googlePending, setGooglePending] = useState(false)
+  const googleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearGoogleTimeout = useCallback(() => {
+    if (googleTimeoutRef.current) {
+      clearTimeout(googleTimeoutRef.current)
+      googleTimeoutRef.current = null
+    }
+  }, [])
+
+  const handleAuthCallback = useCallback(
+    async (url: string) => {
+      clearGoogleTimeout()
+      const result = await completeOAuthCallback(url)
+      window.ipcRenderer?.consumeDeepLink?.(url)
+      setGooglePending(false)
+      if (!result.ok) {
+        throw new Error(result.message)
+      }
+    },
+    [clearGoogleTimeout],
+  )
 
   useEffect(() => {
     if (!supabaseConfigured) {
@@ -39,22 +67,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next)
       setLoading(false)
+      if (next) {
+        clearGoogleTimeout()
+        setGooglePending(false)
+      }
     })
 
-    return () => sub.subscription.unsubscribe()
-  }, [])
+    return () => {
+      sub.subscription.unsubscribe()
+      clearGoogleTimeout()
+    }
+  }, [clearGoogleTimeout])
 
-  async function signIn(email: string, password: string) {
-    if (!supabaseConfigured) throw new Error(supabaseConfigError ?? "Auth not configured")
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw error
-  }
+  // Deep link from main (yappy:// / yappy-dev://auth/callback?code=...)
+  useEffect(() => {
+    if (!supabaseConfigured || !window.ipcRenderer?.on) return
 
-  async function signUp(email: string, password: string) {
+    const unsub = window.ipcRenderer.on(
+      "auth:deep-link",
+      (_event: unknown, url: unknown) => {
+        if (typeof url !== "string") return
+        void handleAuthCallback(url).catch((err) => {
+          console.error("OAuth callback failed:", err)
+          setGooglePending(false)
+        })
+      },
+    )
+
+    void window.ipcRenderer
+      .getPendingDeepLink()
+      .then((pendingUrl) => {
+        if (pendingUrl) {
+          return handleAuthCallback(pendingUrl)
+        }
+      })
+      .catch((err) => {
+        console.error("Pending OAuth callback failed:", err)
+        setGooglePending(false)
+      })
+
+    return () => {
+      unsub()
+    }
+  }, [handleAuthCallback])
+
+  async function signInWithGoogle() {
     if (!supabaseConfigured) throw new Error(supabaseConfigError ?? "Auth not configured")
-    const { data, error } = await supabase.auth.signUp({ email, password })
-    if (error) throw error
-    return { needsConfirm: !data.session }
+    clearGoogleTimeout()
+    setGooglePending(true)
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: GOOGLE_OAUTH_REDIRECT_TO,
+        skipBrowserRedirect: true,
+      },
+    })
+
+    if (error || !data.url) {
+      setGooglePending(false)
+      throw error ?? new Error("Failed to start Google sign-in")
+    }
+
+    try {
+      await window.ipcRenderer.openExternal(data.url)
+      googleTimeoutRef.current = setTimeout(() => {
+        setGooglePending(false)
+      }, GOOGLE_LOADING_TIMEOUT_MS)
+    } catch {
+      setGooglePending(false)
+      throw new Error("Failed to open Google sign-in in browser")
+    }
   }
 
   async function signOut() {
@@ -68,9 +151,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         user: session?.user ?? null,
         loading,
+        googlePending,
         configError: supabaseConfigError,
-        signIn,
-        signUp,
+        signInWithGoogle,
         signOut,
       }}
     >

@@ -20,6 +20,11 @@ contextBridge.exposeInMainWorld("ipcRenderer", {
   openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
   resizeIsland: (mode: "collapsed" | "pill" | "expanded") =>
     ipcRenderer.invoke("island:resize", mode),
+  resizeIslandTo: (size: { width: number; height: number }) =>
+    ipcRenderer.invoke("island:resize-to", size) as Promise<{
+      width: number
+      height: number
+    }>,
   getIslandSizes: () =>
     ipcRenderer.invoke("island:get-sizes") as Promise<{
       collapsed: { width: number; height: number }
@@ -28,4 +33,8 @@ contextBridge.exposeInMainWorld("ipcRenderer", {
     }>,
   getMenuBarHeight: () =>
     ipcRenderer.invoke("island:menu-bar-height") as Promise<number>,
+  getPendingDeepLink: () =>
+    ipcRenderer.invoke("auth:get-pending-deep-link") as Promise<string | null>,
+  consumeDeepLink: (url?: string) =>
+    ipcRenderer.send("auth:consume-deep-link", url),
 })

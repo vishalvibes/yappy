@@ -40,7 +40,8 @@ backend: ## Run the FastAPI backend on :8000
 	cd backend && uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 electron: ## Run the Electron desktop app
-	cd electron && pnpm dev
+	# Cursor/VS Code inject ELECTRON_RUN_AS_NODE=1 — Electron then boots as Node and BrowserWindow import fails.
+	cd electron && env -u ELECTRON_RUN_AS_NODE -u ATOM_SHELL_INTERNAL_RUN_AS_NODE pnpm dev
 
 inngest: ## Run the Inngest Dev Server on :8288 (also serves the MCP endpoint)
 	npx inngest-cli@latest dev -l warn -u http://localhost:8000/api/inngest

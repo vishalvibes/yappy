@@ -127,7 +127,9 @@ cmd_dev() {
   tmux new-session -d -s "$SESSION" -n main -c "$REPO_ROOT/backend" \
     "uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
   # Pane 1: Electron desktop app (electron-vite)
-  tmux split-window -h -t "$SESSION" -c "$REPO_ROOT/electron" "pnpm dev"
+  # Strip ELECTRON_RUN_AS_NODE — Cursor/VS Code set it and Electron then boots as Node.
+  tmux split-window -h -t "$SESSION" -c "$REPO_ROOT/electron" \
+    "env -u ELECTRON_RUN_AS_NODE -u ATOM_SHELL_INTERNAL_RUN_AS_NODE pnpm dev"
   # Pane 2: Inngest Dev Server (also serves the MCP endpoint on :8288)
   tmux select-pane -t 0
   tmux split-window -v -t "$SESSION" -c "$REPO_ROOT" \
