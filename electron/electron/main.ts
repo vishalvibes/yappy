@@ -111,10 +111,17 @@ function placeIsland(size: IslandSize) {
   const x = Math.round(bounds.x + (bounds.width - size.width) / 2)
   const y = bounds.y // absolute top of the display — overlaps the menu bar / notch
   win.setBounds({ x, y, width: size.width, height: size.height }, false)
+  win.invalidateShadow()
 }
 
 function resizeIsland(mode: IslandMode) {
-  const size = sizesForDisplay()[mode]
+  const size = { ...sizesForDisplay()[mode] }
+  // Collapse used to shrink 360→184 and recentre x while the handle was already
+  // painted — macOS composites one frame of the bar at the old origin (left ghost).
+  // Keep the current width so only height changes; x stays put. Handle stays centered.
+  if (mode === "collapsed" && win && !win.isDestroyed()) {
+    size.width = win.getBounds().width
+  }
   placeIsland(size)
   return size
 }

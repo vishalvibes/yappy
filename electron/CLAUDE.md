@@ -6,10 +6,9 @@ Vite + vite-plugin-electron + React + Tailwind + React Query + Supabase auth.
 
 - Collapsed: thin bar tucked under the macOS notch (`island:resize` → `collapsed`)
 - Hover unauth: expanded Google sign-in
-- Hover signed-in: Yap idle — headline + chunky purple **Yap** button
-- **Yap click → listening** (pinned open): “I am listening” + stop + mic-level
-  waveform. Mouse leave must **not** collapse until Stop. Levels only (no record/STT yet).
-- Two open modes: hover-open (collapses on leave) vs pinned-open (listening / Google pending).
+- Hover signed-in: Yap surface (content-fitted pill)
+- Two open modes: hover-open (collapses on leave) vs pinned-open (e.g. listening /
+  Google pending — mouse leave must not collapse until done)
 - Dock icon hidden; always-on-top panel window
 
 ## Motion / transitions
@@ -49,6 +48,6 @@ electron/
   electron/preload.ts
   src/core/auth-redirect.ts
   src/core/auth-callback.ts
-  src/components/island/dynamic-island.tsx
-  src/App.tsx           # island is the root UI
+  src/components/island/    # Dynamic Island UI
+  src/App.tsx               # island is the root UI
 ```

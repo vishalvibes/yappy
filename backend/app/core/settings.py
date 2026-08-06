@@ -88,6 +88,10 @@ class Settings:
     # LLM-native web search. Empty key → the search layer falls back to ddgs.
     TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY", "")
 
+    # --- Sarvam (Speech-to-Text) ---------------------------------------------
+    # Powers POST /yaps background transcription. Empty → /yaps returns 503.
+    SARVAM_API_KEY: str = os.getenv("SARVAM_API_KEY", "")
+
     # --- Flags ---------------------------------------------------------------
     TESTING: bool = _bool_env("TESTING")
 

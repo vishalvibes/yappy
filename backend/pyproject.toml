@@ -17,6 +17,7 @@ dependencies = [
     "openai>=2.46.0",
     "ddgs>=9.14.4",
     "tavily-python>=0.7.26",
+    "python-multipart>=0.0.32",
 ]
 
 [dependency-groups]
