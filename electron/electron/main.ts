@@ -91,7 +91,8 @@ function sizesForDisplay(): Record<IslandMode, IslandSize> {
   const notchH = menuBarHeight()
   return {
     collapsed: { width: 184, height: notchH },
-    pill: { width: 340, height: notchH + 56 },
+    // Signed-in Yap idle usually uses resizeIslandTo; this is the unauth pill fallback.
+    pill: { width: 360, height: notchH + 120 },
     expanded: { width: 340, height: notchH + 148 },
   }
 }

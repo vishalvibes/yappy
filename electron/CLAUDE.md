@@ -5,7 +5,8 @@ Vite + vite-plugin-electron + React + Tailwind + React Query + Supabase auth.
 ## Island UX
 
 - Collapsed: thin bar tucked under the macOS notch (`island:resize` → `collapsed`)
-- Hover: expands to pill (prompts) or expanded panel (auth / drop zone)
+- Hover unauth: expanded Google sign-in
+- Hover signed-in: ultra-minimal Yap idle — headline + chunky purple **Yap** button
 - Dock icon hidden; always-on-top panel window
 
 ## Motion / transitions
