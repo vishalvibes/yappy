@@ -6,7 +6,10 @@ Vite + vite-plugin-electron + React + Tailwind + React Query + Supabase auth.
 
 - Collapsed: thin bar tucked under the macOS notch (`island:resize` → `collapsed`)
 - Hover unauth: expanded Google sign-in
-- Hover signed-in: ultra-minimal Yap idle — headline + chunky purple **Yap** button
+- Hover signed-in: Yap idle — headline + chunky purple **Yap** button
+- **Yap click → listening** (pinned open): “I am listening” + stop + mic-level
+  waveform. Mouse leave must **not** collapse until Stop. Levels only (no record/STT yet).
+- Two open modes: hover-open (collapses on leave) vs pinned-open (listening / Google pending).
 - Dock icon hidden; always-on-top panel window
 
 ## Motion / transitions
@@ -15,6 +18,8 @@ Vite + vite-plugin-electron + React + Tailwind + React Query + Supabase auth.
 `duration-*`, or layout fades/slides on island mode changes, auth content, or
 window resize. Instant state swaps only. Motion is opt-in and needs an explicit
 product reason — never the default when building UI.
+
+Exception: listening waveform bars (mic amplitude) are intentional product motion.
 
 ## Google OAuth (desktop)
 

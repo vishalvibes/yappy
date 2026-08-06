@@ -1,4 +1,11 @@
-import { app, BrowserWindow, ipcMain, screen, shell } from "electron"
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  screen,
+  shell,
+  systemPreferences,
+} from "electron"
 import { fileURLToPath } from "node:url"
 import path from "node:path"
 
@@ -230,6 +237,11 @@ app.whenReady().then(() => {
   ipcMain.handle("island:resize-to", (_event, size: IslandSize) => resizeIslandTo(size))
   ipcMain.handle("island:get-sizes", () => sizesForDisplay())
   ipcMain.handle("island:menu-bar-height", () => menuBarHeight())
+  // macOS: prompt once so getUserMedia in the renderer can read levels.
+  ipcMain.handle("media:ask-microphone", async () => {
+    if (process.platform !== "darwin") return true
+    return systemPreferences.askForMediaAccess("microphone")
+  })
   ipcMain.handle("auth:get-pending-deep-link", () => pendingDeepLinkUrl)
   ipcMain.on("auth:consume-deep-link", (_event, url?: string) => {
     if (typeof url === "string") {

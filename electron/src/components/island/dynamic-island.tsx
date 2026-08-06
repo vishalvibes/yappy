@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
-import { Loader2 } from "lucide-react"
+import { ArrowUp, Loader2 } from "lucide-react"
 
 import { useAuth } from "@/components/auth-provider"
+import { Waveform } from "@/components/island/waveform"
 import { YapButton } from "@/components/island/yap-button"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -15,7 +16,7 @@ const AUTH_BOTTOM_PAD = 16
 const AUTH_GAP_BELOW_NOTCH = 12
 
 const YAP_WIDTH = 360
-const YAP_BOTTOM_PAD = 16
+const YAP_BOTTOM_PAD = 24
 const YAP_GAP_BELOW_NOTCH = 10
 
 export function DynamicIsland() {
@@ -26,16 +27,20 @@ export function DynamicIsland() {
     googlePending,
   } = useAuth()
   const [mode, setMode] = useState<IslandMode>("collapsed")
+  /** Pinned open while mic UI is up — mouse leave must not collapse. */
+  const [listening, setListening] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
   const [notchPad, setNotchPad] = useState(32)
   const [googleSecondsLeft, setGoogleSecondsLeft] = useState(30)
   const leaveTimer = useRef<number | null>(null)
+  const pointerInside = useRef(false)
   const wasGooglePending = useRef(false)
   const authContentRef = useRef<HTMLDivElement>(null)
   const yapContentRef = useRef<HTMLDivElement>(null)
 
   const isAuthExpanded = mode === "expanded" && !user
-  const isYapIdle = Boolean(user) && mode === "pill"
+  const isYapSurface = Boolean(user) && mode === "pill"
+  const isYapListening = isYapSurface && listening
 
   const resize = useCallback(
     async (next: IslandMode) => {
@@ -96,14 +101,14 @@ export function DynamicIsland() {
   }, [isAuthExpanded, fitAuthHeight, googlePending, authError, configError])
 
   useLayoutEffect(() => {
-    if (!isYapIdle) return
+    if (!isYapSurface) return
     const el = yapContentRef.current
     if (!el) return
     fitYapHeight()
     const ro = new ResizeObserver(() => fitYapHeight())
     ro.observe(el)
     return () => ro.disconnect()
-  }, [isYapIdle, fitYapHeight])
+  }, [isYapSurface, isYapListening, fitYapHeight])
 
   useEffect(() => {
     if (!googlePending) {
@@ -125,18 +130,42 @@ export function DynamicIsland() {
   }
 
   function onEnter() {
+    pointerInside.current = true
     clearLeaveTimer()
     if (mode === "collapsed") {
       void resize(user ? "pill" : "expanded")
     }
   }
 
+  /**
+   * Two open modes:
+   * - Hover-open: collapses shortly after leave (idle Yap / auth).
+   * - Pinned-open: listening (or Google pending) — stay expanded until stop/done.
+   */
   function onLeave() {
-    if (googlePending) return
+    pointerInside.current = false
+    if (googlePending || listening) return
     clearLeaveTimer()
     leaveTimer.current = window.setTimeout(() => {
       void resize("collapsed")
     }, 280)
+  }
+
+  function startListening() {
+    clearLeaveTimer()
+    setListening(true)
+    if (mode === "collapsed") void resize("pill")
+  }
+
+  function stopListening() {
+    setListening(false)
+    // If the cursor already left while pinned, collapse now.
+    if (!pointerInside.current) {
+      clearLeaveTimer()
+      leaveTimer.current = window.setTimeout(() => {
+        void resize("collapsed")
+      }, 180)
+    }
   }
 
   useEffect(() => {
@@ -166,7 +195,7 @@ export function DynamicIsland() {
         className={cn(
           "flex h-full w-full flex-col items-center overflow-hidden text-white",
           mode === "collapsed" && "justify-start bg-transparent pt-3.5",
-          isYapIdle &&
+          isYapSurface &&
             "justify-start rounded-t-none rounded-b-[28px] bg-black px-5",
           isAuthExpanded &&
             "justify-start rounded-t-none rounded-b-[28px] bg-black px-5",
@@ -180,14 +209,14 @@ export function DynamicIsland() {
             ? {
                 paddingTop:
                   notchPad +
-                  (isAuthExpanded || isYapIdle
-                    ? isYapIdle
+                  (isAuthExpanded || isYapSurface
+                    ? isYapSurface
                       ? YAP_GAP_BELOW_NOTCH
                       : AUTH_GAP_BELOW_NOTCH
                     : 8),
-                ...((isAuthExpanded || isYapIdle)
+                ...((isAuthExpanded || isYapSurface)
                   ? {
-                      paddingBottom: isYapIdle
+                      paddingBottom: isYapSurface
                         ? YAP_BOTTOM_PAD
                         : AUTH_BOTTOM_PAD,
                     }
@@ -213,20 +242,35 @@ export function DynamicIsland() {
           </button>
         ) : null}
 
-        {isYapIdle ? (
+        {isYapSurface ? (
           <div
             ref={yapContentRef}
-            className="flex w-full flex-col items-center gap-3"
+            className={cn(
+              "flex w-full flex-col items-center",
+              isYapListening ? "gap-1.5" : "gap-3",
+            )}
             onMouseEnter={clearLeaveTimer}
           >
             <p className="text-center text-[15px] font-medium tracking-tight text-white/90">
-              Yap or drop something interesting
+              {isYapListening
+                ? "I am listening"
+                : "Yap or drop something interesting"}
             </p>
-            <YapButton
-              onClick={() => {
-                // Mic / STT wired in a later slice
-              }}
-            />
+            {isYapListening ? (
+              <div className="relative flex h-[52px] w-full items-center justify-center">
+                <Waveform active={isYapListening} />
+                <button
+                  type="button"
+                  aria-label="Stop listening"
+                  onClick={stopListening}
+                  className="absolute right-3 flex size-7 cursor-pointer items-center justify-center rounded-full bg-white/15 text-neutral-400 hover:bg-white/25 hover:text-white"
+                >
+                  <ArrowUp className="size-4" strokeWidth={2.75} aria-hidden />
+                </button>
+              </div>
+            ) : (
+              <YapButton onClick={startListening} />
+            )}
           </div>
         ) : null}
 

@@ -33,6 +33,8 @@ contextBridge.exposeInMainWorld("ipcRenderer", {
     }>,
   getMenuBarHeight: () =>
     ipcRenderer.invoke("island:menu-bar-height") as Promise<number>,
+  askMicrophoneAccess: () =>
+    ipcRenderer.invoke("media:ask-microphone") as Promise<boolean>,
   getPendingDeepLink: () =>
     ipcRenderer.invoke("auth:get-pending-deep-link") as Promise<string | null>,
   consumeDeepLink: (url?: string) =>

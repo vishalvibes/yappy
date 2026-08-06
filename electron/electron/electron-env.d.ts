@@ -30,6 +30,7 @@ interface YappyIpcRenderer {
     expanded: { width: number; height: number }
   }>
   getMenuBarHeight: () => Promise<number>
+  askMicrophoneAccess: () => Promise<boolean>
   getPendingDeepLink: () => Promise<string | null>
   consumeDeepLink: (url?: string) => void
 }
