@@ -13,7 +13,7 @@
 // Authorization header.
 
 import { API_BASE_URL } from "@/lib/api"
-import { supabase, supabaseConfigured } from "@/lib/supabase"
+import { getAuthHeaderTokens } from "@/lib/auth-session-cache"
 
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string }
 
@@ -29,18 +29,18 @@ export async function streamChat(
   onDelta: (delta: string) => void,
   signal?: AbortSignal,
 ): Promise<void> {
-  const {
-    data: { session },
-  } = supabaseConfigured
-    ? await supabase.auth.getSession()
-    : { data: { session: null } }
+  const { accessToken, refreshToken } = await getAuthHeaderTokens()
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  }
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`
+    if (refreshToken) headers["x-refresh-token"] = refreshToken
+  }
 
   const res = await fetch(`${API_BASE_URL}/chat/stream`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
-    },
+    headers,
     body: JSON.stringify({ messages }),
     signal,
   })

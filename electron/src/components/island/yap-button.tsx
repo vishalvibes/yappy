@@ -16,7 +16,8 @@ export function YapButton({
       aria-label="Yap"
       onClick={onClick}
       className={cn(
-        "group relative h-[46px] w-[148px] cursor-pointer select-none",
+        "group relative h-[46px] w-[148px] cursor-pointer select-none rounded-[12px]",
+        "outline-none focus:outline-none focus-visible:outline-none",
         className,
       )}
     >

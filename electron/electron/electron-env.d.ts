@@ -37,6 +37,15 @@ interface YappyIpcRenderer {
   askMicrophoneAccess: () => Promise<boolean>
   getPendingDeepLink: () => Promise<string | null>
   consumeDeepLink: (url?: string) => void
+  openTweetsWindow: (tweets: string[]) => Promise<{ ok: boolean }>
+  getTweets: () => Promise<string[]>
+  updateTweets: (tweets: string[]) => Promise<{ ok: boolean }>
+  closeTweetsWindow: () => Promise<void>
+  captureRegion: () => Promise<
+    | { ok: true; dataUrl: string }
+    | { ok: false; cancelled?: boolean; error?: string }
+  >
+  setEscapeEndsRecording: (enabled: boolean) => Promise<void>
 }
 
 interface Window {

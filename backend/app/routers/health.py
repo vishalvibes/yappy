@@ -61,6 +61,7 @@ async def health_matrix(
             _timed("api", _check_api),
             _timed("supabase", lambda: _check_supabase(supabase)),
             _timed("llm", _check_llm),
+            _timed("sarvam", _check_sarvam),
             _timed("inngest", _check_inngest),
         )
     )
@@ -93,6 +94,13 @@ async def _check_llm() -> tuple[str, str]:
     if llm_clients.openai_client is None:
         return "down", "enabled but client not initialized (missing OPENAI_API_KEY)"
     return "up", f"OpenAI model {settings.OPENAI_MODEL}"
+
+
+async def _check_sarvam() -> tuple[str, str]:
+    # Yap STT depends on Sarvam; no live probe — key presence only (like llm disabled).
+    if not settings.SARVAM_API_KEY:
+        return "disabled", "SARVAM_API_KEY is not set"
+    return "up", "SARVAM_API_KEY configured"
 
 
 async def _check_inngest() -> tuple[str, str]:

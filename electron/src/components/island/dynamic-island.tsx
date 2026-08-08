@@ -1,4 +1,4 @@
-import { useCallback } from "react"
+import { useCallback, useEffect, useState } from "react"
 
 import { AuthSurface } from "@/components/island/auth-surface"
 import {
@@ -21,15 +21,54 @@ export function DynamicIsland() {
   const userPresent = Boolean(user)
 
   const yap = useYapWorkflow()
+  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(
+    null,
+  )
+  const [capturing, setCapturing] = useState(false)
+
   const island = useIslandWindow({
     userPresent,
     googlePending,
-    yapPinned: yap.pinned,
+    yapPinned: yap.pinned || capturing || Boolean(screenshotPreview),
   })
+
+  const clearCapture = useCallback(() => {
+    setScreenshotPreview(null)
+    yap.setImageAttachment(null)
+    island.collapseAfterUnpin()
+  }, [island.collapseAfterUnpin, yap.setImageAttachment])
+
   const dismissYap = useCallback(() => {
     yap.dismiss()
+    setScreenshotPreview(null)
+    setCapturing(false)
     island.collapseAfterUnpin()
   }, [island.collapseAfterUnpin, yap.dismiss])
+
+  // Escape during listening: full reset (workflow dismiss + clear capture UI).
+  useEffect(() => {
+    if (yap.phase !== "listening") return
+    const off = window.ipcRenderer.on("yap:escape-end", () => {
+      dismissYap()
+    })
+    return () => {
+      off()
+    }
+  }, [dismissYap, yap.phase])
+
+  const captureRegion = useCallback(async () => {
+    if (capturing) return
+    setCapturing(true)
+    try {
+      const result = await window.ipcRenderer.captureRegion()
+      if (result.ok) {
+        setScreenshotPreview(result.dataUrl)
+        yap.setImageAttachment(result.dataUrl)
+      }
+    } finally {
+      setCapturing(false)
+    }
+  }, [capturing, yap.setImageAttachment])
 
   const isAuthExpanded = island.mode === "expanded" && !userPresent
   const isYapSurface = userPresent && island.mode === "pill"
@@ -104,6 +143,10 @@ export function DynamicIsland() {
           <YapSurface
             contentRef={yapContentRef}
             workflow={yap}
+            screenshotPreview={screenshotPreview}
+            capturing={capturing}
+            onCapture={() => void captureRegion()}
+            onClearCapture={clearCapture}
             onDismiss={dismissYap}
             onMouseEnter={island.clearLeaveTimer}
           />

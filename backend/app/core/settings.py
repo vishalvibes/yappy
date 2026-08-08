@@ -83,6 +83,11 @@ class Settings:
     #   gpt-5.6-luna   fast + cheapest      $1 / $6
     # `gpt-5.6` is an alias for Sol. All three: 1M context, 128k max output.
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-5.6-terra")
+    # Fast tier for judge / vision / template helpers (not generate/rewrite).
+    OPENAI_MODEL_FAST: str = os.getenv("OPENAI_MODEL_FAST", "gpt-5.6-luna")
+    # When true, generate/rewrite use an extra LLM call to order drafts.
+    # Default off — heuristic sort is enough and saves a full RTT.
+    YAPS_LLM_RANK: bool = _bool_env("YAPS_LLM_RANK")
 
     # --- Web research (Tavily) -----------------------------------------------
     # LLM-native web search. Empty key → the search layer falls back to ddgs.

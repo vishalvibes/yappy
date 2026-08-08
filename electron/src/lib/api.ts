@@ -4,7 +4,6 @@
 import axios, { AxiosHeaders } from "axios"
 
 import { getAuthHeaderTokens } from "@/lib/auth-session-cache"
-import { supabase, supabaseConfigured } from "@/lib/supabase"
 
 export const API_BASE_URL =
   import.meta.env.VITE_API_URL ?? "http://localhost:8000"
@@ -33,23 +32,29 @@ apiClient.interceptors.request.use(async (config) => {
   return config
 })
 
+/**
+ * JSON API helper — same auth path as `apiClient` (session cache + refresh header).
+ * Prefer this for JSON routes; use `apiClient` for multipart / custom timeouts.
+ */
 export async function apiFetch<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
-  const {
-    data: { session },
-  } = supabaseConfigured
-    ? await supabase.auth.getSession()
-    : { data: { session: null } }
+  const method = (init?.method ?? "GET").toUpperCase()
+  const headers = new Headers(init?.headers)
+  if (!headers.has("Content-Type") && method !== "GET" && method !== "HEAD") {
+    headers.set("Content-Type", "application/json")
+  }
+
+  const { accessToken, refreshToken } = await getAuthHeaderTokens()
+  if (accessToken) {
+    headers.set("Authorization", `Bearer ${accessToken}`)
+    if (refreshToken) headers.set("x-refresh-token", refreshToken)
+  }
 
   const res = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
-      ...(init?.headers ?? {}),
-    },
     ...init,
+    headers,
   })
   if (!res.ok) {
     const body = await res.text()

@@ -48,6 +48,7 @@ async def test_health_matrix_healthy(client, monkeypatch):
     app.dependency_overrides[get_supabase_client] = _OkSupabase
     # An unconfigured LLM must not degrade the matrix — it reports "disabled".
     monkeypatch.setattr(settings, "OPENAI_ENABLED", False)
+    monkeypatch.setattr(settings, "SARVAM_API_KEY", "")
 
     res = await client.get("/health/matrix")
 
@@ -58,10 +59,12 @@ async def test_health_matrix_healthy(client, monkeypatch):
         "api",
         "supabase",
         "llm",
+        "sarvam",
         "inngest",
     }
     assert _component(body, "supabase")["status"] == "up"
     assert _component(body, "llm")["status"] == "disabled"
+    assert _component(body, "sarvam")["status"] == "disabled"
 
 
 @pytest.mark.unit

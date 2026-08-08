@@ -1,6 +1,7 @@
 import type { RefObject } from "react"
-import { ArrowUp, Check, CircleCheck, Copy, Loader2 } from "lucide-react"
+import { ArrowUp, Check, CircleCheck, Loader2, X } from "lucide-react"
 
+import { EyeButton } from "@/components/island/eye-button"
 import { Waveform } from "@/components/island/waveform"
 import { YapButton } from "@/components/island/yap-button"
 import type {
@@ -8,38 +9,61 @@ import type {
   YapWorkflow,
 } from "@/components/island/use-yap-workflow"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 
 type YapSurfaceProps = {
   contentRef: RefObject<HTMLDivElement | null>
   workflow: YapWorkflow
+  screenshotPreview: string | null
+  capturing: boolean
+  onCapture: () => void
+  onClearCapture: () => void
   onDismiss: () => void
   onMouseEnter: () => void
 }
 
-function headline(phase: YapPhase, generating: boolean): string | null {
+function headline(
+  phase: YapPhase,
+  generating: boolean,
+  saving: boolean,
+  capturing: boolean,
+  hasPreview: boolean,
+): string | null {
   if (generating) return "Generating viral content…"
+  if (saving) return "Remembering…"
+  if (capturing) return "Select an area…"
+  if (phase === "listening" && hasPreview) return "Tell me about this"
   if (phase === "listening") return "I am listening"
-  if (phase === "tweet") return "Your tweet"
-  if (phase === "idle") return "Yap or drop something interesting"
+  if (phase === "idle" && hasPreview) return "Tell me about this"
+  if (phase === "idle") return "Yap or Show something interesting"
   return null
 }
 
 export function YapSurface({
   contentRef,
   workflow,
+  screenshotPreview,
+  capturing,
+  onCapture,
+  onClearCapture,
   onDismiss,
   onMouseEnter,
 }: YapSurfaceProps) {
-  const title = headline(workflow.phase, workflow.generating)
+  const hasPreview = Boolean(screenshotPreview)
+  const showingCapture =
+    hasPreview &&
+    (workflow.phase === "idle" || workflow.phase === "listening")
+  const title = headline(
+    workflow.phase,
+    workflow.generating,
+    workflow.saving,
+    capturing,
+    hasPreview,
+  )
 
   return (
     <div
       ref={contentRef}
-      className={cn(
-        "flex w-full flex-col items-center",
-        workflow.phase === "listening" ? "gap-2" : "gap-4",
-      )}
+      className="flex w-full flex-col items-center gap-4"
       onMouseEnter={onMouseEnter}
     >
       {title ? (
@@ -48,17 +72,40 @@ export function YapSurface({
         </p>
       ) : null}
 
+      {showingCapture && screenshotPreview ? (
+        <div className="relative w-full max-w-[320px]">
+          <img
+            src={screenshotPreview}
+            alt="Screen capture"
+            className="mx-auto max-h-[280px] w-full rounded-[12px] object-contain"
+            draggable={false}
+          />
+          {workflow.phase === "idle" ? (
+            <button
+              type="button"
+              aria-label="Clear capture"
+              onClick={onClearCapture}
+              className="absolute right-1.5 top-1.5 flex size-7 cursor-pointer items-center justify-center rounded-full bg-black/55 text-white shadow-[0_0_0_1px_rgba(255,255,255,0.18)] backdrop-blur-[2px] hover:bg-black/70"
+            >
+              <X className="size-3.5" strokeWidth={2.75} aria-hidden />
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
       {workflow.phase === "listening" ? (
         <ListeningSurface workflow={workflow} />
       ) : null}
       {workflow.phase === "idle" ? (
-        <YapButton onClick={() => void workflow.startListening()} />
+        <div className="flex items-center gap-3">
+          <YapButton onClick={() => void workflow.startListening()} />
+          {!hasPreview ? (
+            <EyeButton disabled={capturing} onClick={onCapture} />
+          ) : null}
+        </div>
       ) : null}
       {workflow.phase === "remembered" ? (
         <RememberedSurface workflow={workflow} onDismiss={onDismiss} />
-      ) : null}
-      {workflow.phase === "tweet" && workflow.tweet ? (
-        <TweetSurface workflow={workflow} onDismiss={onDismiss} />
       ) : null}
     </div>
   )
@@ -87,11 +134,11 @@ function RememberedSurface({
   workflow: YapWorkflow
   onDismiss: () => void
 }) {
-  if (workflow.generating) {
+  if (workflow.generating || workflow.saving) {
     return (
       <Loader2
         className="size-5 animate-spin text-white/70"
-        aria-label="Generating"
+        aria-label={workflow.generating ? "Generating" : "Remembering"}
       />
     )
   }
@@ -149,6 +196,7 @@ function SavedYap({
   workflow: YapWorkflow
   onDismiss: () => void
 }) {
+  const label = workflow.saved ? "Saved" : "Ready"
   return (
     <>
       <p className="flex items-center gap-1.5 text-[15px] font-medium tracking-tight text-white/90">
@@ -157,7 +205,7 @@ function SavedYap({
           strokeWidth={2.25}
           aria-hidden
         />
-        Saved
+        {label}
       </p>
       {workflow.error ? (
         <p className="text-center text-[12px] text-red-300">{workflow.error}</p>
@@ -166,55 +214,20 @@ function SavedYap({
         <div className="size-10 shrink-0" aria-hidden />
         <button
           type="button"
-          disabled={!workflow.saved || workflow.saving}
+          disabled={!workflow.ready || workflow.saving}
           className="flex h-10 cursor-pointer items-center justify-center rounded-[12px] bg-white px-5 text-[13px] font-medium text-black hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
-          onClick={() => void workflow.generateContent()}
+          onClick={() => {
+            void (async () => {
+              const ok = await workflow.generateContent()
+              if (ok) onDismiss()
+            })()
+          }}
         >
-          Generate content
+          Generate post
         </button>
         <DoneButton onClick={onDismiss} />
       </div>
     </>
-  )
-}
-
-function TweetSurface({
-  workflow,
-  onDismiss,
-}: {
-  workflow: YapWorkflow
-  onDismiss: () => void
-}) {
-  return (
-    <div className="flex w-full max-w-[300px] flex-col items-center gap-3">
-      <p className="whitespace-pre-wrap text-center text-[13px] leading-snug text-white/85">
-        {workflow.tweet}
-      </p>
-      {workflow.error ? (
-        <p className="text-center text-[12px] text-red-300">{workflow.error}</p>
-      ) : null}
-      <div className="flex items-center justify-center gap-1.5">
-        <div className="size-10 shrink-0" aria-hidden />
-        <button
-          type="button"
-          className="flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-[12px] bg-white px-5 text-[13px] font-medium text-black hover:bg-white/90"
-          onClick={() => void workflow.copyTweet()}
-        >
-          {workflow.copied ? (
-            <>
-              <Check className="size-3.5" strokeWidth={2.75} aria-hidden />
-              Copied
-            </>
-          ) : (
-            <>
-              <Copy className="size-3.5" strokeWidth={2.25} aria-hidden />
-              Copy tweet
-            </>
-          )}
-        </button>
-        <DoneButton onClick={onDismiss} />
-      </div>
-    </div>
   )
 }
 
