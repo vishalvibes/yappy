@@ -66,6 +66,7 @@ from app.services.yaps.prompts import (
 )
 from app.services.yaps.ranking import _rank_tweets
 from app.services.yaps.schemas import GenerateIn, GenerateOut
+from app.services.yaps.streak import YapStatsOut, build_yap_stats
 from app.services.yaps.templates import _maybe_store_post_template
 from app.services.yaps.json_parse import _parse_tweets
 from app.utils.llm import create_chat_completion
@@ -125,6 +126,7 @@ class YapOut(BaseModel):
     error: str | None = None
     # From screenshot vision: social_post → reply; other → create content.
     screen_kind: str | None = None
+    stats: YapStatsOut | None = None
 
 
 class RewriteOut(BaseModel):
@@ -139,6 +141,7 @@ async def create_yap(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     image: UploadFile | None = File(None),
+    tz: str | None = Form(None),
     user_id: str = Depends(get_current_user_id),
     supabase: AClient = Depends(get_supabase_client),
 ) -> YapOut:
@@ -250,9 +253,11 @@ async def create_yap(
         response.status_code = 201
         if not res.data:
             raise HTTPException(status_code=502, detail="yap insert returned no row")
-        return _to_out(res.data[0], stored=True)
+        stats = await build_yap_stats(supabase, user_id=user_id, tz_name=tz)
+        return _to_out(res.data[0], stored=True, stats=stats)
 
     response.status_code = 200
+    stats = await build_yap_stats(supabase, user_id=user_id, tz_name=tz)
     return YapOut(
         id=None,
         stored=False,
@@ -261,6 +266,7 @@ async def create_yap(
         reference=reference,
         language_code=language_code,
         screen_kind=screen_kind,
+        stats=stats,
     )
 
 
@@ -371,7 +377,12 @@ async def rewrite_tweets(
     return RewriteOut(tweets=rewritten, feedback=feedback)
 
 
-def _to_out(row: dict, *, stored: bool = True) -> YapOut:
+def _to_out(
+    row: dict,
+    *,
+    stored: bool = True,
+    stats: YapStatsOut | None = None,
+) -> YapOut:
     transcript = row.get("transcript")
     reference = row.get("reference")
     screen_kind = row.get("screen_kind")
@@ -388,4 +399,5 @@ def _to_out(row: dict, *, stored: bool = True) -> YapOut:
         language_code=row.get("language_code"),
         error=row.get("error"),
         screen_kind=screen_kind,
+        stats=stats,
     )

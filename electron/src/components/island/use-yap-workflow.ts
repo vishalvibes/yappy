@@ -4,7 +4,7 @@ import { useGenerateYapTweetsMutation } from "@/hooks/mutations/post/useGenerate
 import { useUploadYapMutation } from "@/hooks/mutations/post/useUploadYapMutation"
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder"
 import { getApiErrorMessage } from "@/lib/api-error"
-import type { Yap } from "@/lib/yaps"
+import { displayYapStats, type Yap, type YapStats } from "@/lib/yaps"
 
 export type YapPhase = "idle" | "listening" | "remembered"
 
@@ -209,6 +209,11 @@ export function useYapWorkflow() {
     }
   }, [phase])
 
+  const streakStats: YapStats | null = useMemo(() => {
+    if (phase !== "remembered" || !yap || yap.status !== "ready") return null
+    return displayYapStats(yap)
+  }, [phase, yap])
+
   return {
     phase,
     micStream: recorder.micStream,
@@ -222,6 +227,7 @@ export function useYapWorkflow() {
     // Actually persisted to memory.
     saved: phase === "remembered" && yap?.status === "ready" && yap.stored,
     failed: phase === "remembered" && yap?.status === "failed",
+    streakStats,
     setImageAttachment,
     startListening,
     sendYap,

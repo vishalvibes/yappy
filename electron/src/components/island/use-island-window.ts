@@ -21,8 +21,9 @@ export function useIslandWindow({
 }: IslandWindowOptions) {
   const [mode, setMode] = useState<IslandMode>("collapsed")
   const [notchPad, setNotchPad] = useState(32)
+  const [pointerInside, setPointerInside] = useState(false)
   const leaveTimer = useRef<number | null>(null)
-  const pointerInside = useRef(false)
+  const pointerInsideRef = useRef(false)
   const wasGooglePending = useRef(false)
 
   const clearLeaveTimer = useCallback(() => {
@@ -69,12 +70,14 @@ export function useIslandWindow({
   }, [googlePending, resize, userPresent])
 
   const onEnter = useCallback(() => {
-    pointerInside.current = true
+    pointerInsideRef.current = true
+    setPointerInside(true)
     clearLeaveTimer()
   }, [clearLeaveTimer])
 
   const onLeave = useCallback(() => {
-    pointerInside.current = false
+    pointerInsideRef.current = false
+    setPointerInside(false)
     if (googlePending || yapPinned) return
     clearLeaveTimer()
     leaveTimer.current = window.setTimeout(() => {
@@ -83,7 +86,7 @@ export function useIslandWindow({
   }, [clearLeaveTimer, googlePending, resize, yapPinned])
 
   const collapseAfterUnpin = useCallback(() => {
-    if (pointerInside.current) return
+    if (pointerInsideRef.current) return
     clearLeaveTimer()
     leaveTimer.current = window.setTimeout(() => {
       void resize("collapsed")
@@ -106,7 +109,8 @@ export function useIslandWindow({
       if (event.clientX < left || event.clientX > left + hitWidth) return
 
       opened = true
-      pointerInside.current = true
+      pointerInsideRef.current = true
+      setPointerInside(true)
       clearLeaveTimer()
       void window.ipcRenderer.setIgnoreMouseEvents(false)
       void resize(userPresent ? "pill" : "expanded")
@@ -122,6 +126,7 @@ export function useIslandWindow({
   return {
     mode,
     notchPad,
+    pointerInside,
     resize,
     clearLeaveTimer,
     onEnter,

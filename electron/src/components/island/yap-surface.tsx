@@ -1,20 +1,26 @@
-import type { RefObject } from "react"
-import { ArrowUp, Check, CircleCheck, Loader2, X } from "lucide-react"
+import { useEffect, useRef, type RefObject } from "react"
+import { ArrowUp, Loader2, X } from "lucide-react"
 
+import { CreateButton } from "@/components/island/create-button"
 import { EyeButton } from "@/components/island/eye-button"
+import { OkayButton } from "@/components/island/okay-button"
 import { Waveform } from "@/components/island/waveform"
 import { YapButton } from "@/components/island/yap-button"
+import { YapStreakWeek } from "@/components/island/yap-streak-week"
 import type {
   YapPhase,
   YapWorkflow,
 } from "@/components/island/use-yap-workflow"
 import { Button } from "@/components/ui/button"
 
+const SUCCESS_AUTO_DISMISS_MS = 15_000
+
 type YapSurfaceProps = {
   contentRef: RefObject<HTMLDivElement | null>
   workflow: YapWorkflow
   screenshotPreview: string | null
   capturing: boolean
+  pointerInside: boolean
   onCapture: () => void
   onClearCapture: () => void
   onDismiss: () => void
@@ -43,6 +49,7 @@ export function YapSurface({
   workflow,
   screenshotPreview,
   capturing,
+  pointerInside,
   onCapture,
   onClearCapture,
   onDismiss,
@@ -105,7 +112,11 @@ export function YapSurface({
         </div>
       ) : null}
       {workflow.phase === "remembered" ? (
-        <RememberedSurface workflow={workflow} onDismiss={onDismiss} />
+        <RememberedSurface
+          workflow={workflow}
+          pointerInside={pointerInside}
+          onDismiss={onDismiss}
+        />
       ) : null}
     </div>
   )
@@ -129,9 +140,11 @@ function ListeningSurface({ workflow }: { workflow: YapWorkflow }) {
 
 function RememberedSurface({
   workflow,
+  pointerInside,
   onDismiss,
 }: {
   workflow: YapWorkflow
+  pointerInside: boolean
   onDismiss: () => void
 }) {
   if (workflow.generating || workflow.saving) {
@@ -144,11 +157,15 @@ function RememberedSurface({
   }
 
   return (
-    <div className="flex w-full max-w-[280px] flex-col items-center gap-3">
+    <div className="flex w-full max-w-[280px] flex-col items-center gap-5">
       {workflow.failed ? (
         <UploadFailure workflow={workflow} />
       ) : (
-        <SavedYap workflow={workflow} onDismiss={onDismiss} />
+        <SavedYap
+          workflow={workflow}
+          pointerInside={pointerInside}
+          onDismiss={onDismiss}
+        />
       )}
       {workflow.failed ? (
         <button
@@ -191,55 +208,55 @@ function UploadFailure({ workflow }: { workflow: YapWorkflow }) {
 
 function SavedYap({
   workflow,
+  pointerInside,
   onDismiss,
 }: {
   workflow: YapWorkflow
+  pointerInside: boolean
   onDismiss: () => void
 }) {
-  const label = workflow.saved ? "Saved" : "Ready"
+  const stats = workflow.streakStats
+  const armedRef = useRef(false)
+  const onDismissRef = useRef(onDismiss)
+  const pointerInsideRef = useRef(pointerInside)
+  onDismissRef.current = onDismiss
+  pointerInsideRef.current = pointerInside
+
+  useEffect(() => {
+    armedRef.current = false
+    const timer = window.setTimeout(() => {
+      armedRef.current = true
+      if (!pointerInsideRef.current) onDismissRef.current()
+    }, SUCCESS_AUTO_DISMISS_MS)
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (armedRef.current && !pointerInside) {
+      onDismiss()
+    }
+  }, [pointerInside, onDismiss])
+
   return (
-    <>
-      <p className="flex items-center gap-1.5 text-[15px] font-medium tracking-tight text-white/90">
-        <CircleCheck
-          className="size-4 text-emerald-400"
-          strokeWidth={2.25}
-          aria-hidden
-        />
-        {label}
-      </p>
+    <div className="flex w-full flex-col items-center gap-5">
+      {stats ? <YapStreakWeek stats={stats} /> : null}
       {workflow.error ? (
         <p className="text-center text-[12px] text-red-300">{workflow.error}</p>
       ) : null}
-      <div className="flex items-center justify-center gap-1.5">
-        <div className="size-10 shrink-0" aria-hidden />
-        <button
-          type="button"
-          disabled={!workflow.ready || workflow.saving}
-          className="flex h-10 cursor-pointer items-center justify-center rounded-[12px] bg-white px-5 text-[13px] font-medium text-black hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-40"
+      <div className="flex items-center justify-center gap-3">
+        <OkayButton onClick={onDismiss} />
+        <CreateButton
+          disabled={!workflow.ready || workflow.saving || workflow.generating}
           onClick={() => {
             void (async () => {
               const ok = await workflow.generateContent()
               if (ok) onDismiss()
             })()
           }}
-        >
-          Generate post
-        </button>
-        <DoneButton onClick={onDismiss} />
+        />
       </div>
-    </>
-  )
-}
-
-function DoneButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      aria-label="Done"
-      className="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-[12px] border border-white/15 bg-white/10 text-white/70 hover:bg-white/15 hover:text-white/90"
-      onClick={onClick}
-    >
-      <Check className="size-4" strokeWidth={2.5} aria-hidden />
-    </button>
+    </div>
   )
 }

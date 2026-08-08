@@ -5,6 +5,16 @@ import { apiClient } from "@/lib/api"
 /** Sync STT — create always returns ready|failed (no async processing). */
 export type YapStatus = "ready" | "failed"
 
+export type YapDay = {
+  date: string
+  posted: boolean
+}
+
+export type YapStats = {
+  streak: number
+  week: YapDay[]
+}
+
 export type Yap = {
   id: string | null
   stored: boolean
@@ -17,6 +27,7 @@ export type Yap = {
   error: string | null
   /** From screenshot vision: social_post → reply; other → create content. */
   screen_kind?: "social_post" | "other" | null
+  stats?: YapStats | null
 }
 
 export type GenerateTweetsInput = {
@@ -56,6 +67,72 @@ function dataUrlToFile(dataUrl: string, filename: string): File | null {
   return new File([bytes], filename.replace(/\.\w+$/, `.${ext}`), { type: mime })
 }
 
+/**
+ * Stats for the success surface. Ephemeral yaps never hit the DB, so bump
+ * today to posted and extend streak when the server run ended yesterday.
+ */
+export function displayYapStats(yap: Yap): YapStats {
+  const stats = yap.stats
+  if (!stats?.week?.length) {
+    return { streak: 1, week: localWeekWithTodayPosted() }
+  }
+  if (yap.stored) return stats
+
+  const today = localDateKey()
+  const yesterday = shiftDateKey(today, -1)
+  const todayPostedOnServer = stats.week.some(
+    (d) => d.date === today && d.posted,
+  )
+  const week = stats.week.map((day) =>
+    day.date === today ? { ...day, posted: true } : day,
+  )
+
+  if (todayPostedOnServer) {
+    return { streak: stats.streak, week }
+  }
+
+  const yesterdayPosted = stats.week.some(
+    (d) => d.date === yesterday && d.posted,
+  )
+  // Server streak ends on the latest posted day ≤ today. With today absent,
+  // a positive streak that includes yesterday becomes streak+1; otherwise 1.
+  const streak =
+    yesterdayPosted && stats.streak > 0 ? stats.streak + 1 : 1
+
+  return { streak, week }
+}
+
+function localDateKey(d = new Date()): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${y}-${m}-${day}`
+}
+
+function shiftDateKey(key: string, deltaDays: number): string {
+  const [y, m, d] = key.split("-").map(Number)
+  const dt = new Date(y!, m! - 1, d!)
+  dt.setDate(dt.getDate() + deltaDays)
+  return localDateKey(dt)
+}
+
+function localWeekWithTodayPosted(): YapStats["week"] {
+  const today = new Date()
+  const day = today.getDay() // 0 Sun
+  const mondayOffset = day === 0 ? -6 : 1 - day
+  const monday = new Date(today)
+  monday.setDate(today.getDate() + mondayOffset)
+  const todayKey = localDateKey(today)
+  const week: YapDay[] = []
+  for (let i = 0; i < 7; i++) {
+    const dt = new Date(monday)
+    dt.setDate(monday.getDate() + i)
+    const key = localDateKey(dt)
+    week.push({ date: key, posted: key === todayKey })
+  }
+  return week
+}
+
 /** Upload audio (+ optional screenshot); waits for STT / vision + optional DB store. */
 export async function uploadYap(
   blob: Blob,
@@ -66,6 +143,7 @@ export async function uploadYap(
   const file = new File([blob], filename, { type: "audio/webm" })
   const form = new FormData()
   form.append("file", file)
+  form.append("tz", Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC")
 
   if (options.imageDataUrl) {
     const image = dataUrlToFile(options.imageDataUrl, "capture.png")

@@ -39,11 +39,14 @@ export function DynamicIsland() {
   }, [island.collapseAfterUnpin, yap.setImageAttachment])
 
   const dismissYap = useCallback(() => {
-    yap.dismiss()
-    setScreenshotPreview(null)
-    setCapturing(false)
-    island.collapseAfterUnpin()
-  }, [island.collapseAfterUnpin, yap.dismiss])
+    // Collapse first so we never flash idle Yap/Eye, then reset session.
+    island.clearLeaveTimer()
+    void island.resize("collapsed").then(() => {
+      yap.dismiss()
+      setScreenshotPreview(null)
+      setCapturing(false)
+    })
+  }, [island.clearLeaveTimer, island.resize, yap.dismiss])
 
   // Escape during listening: full reset (workflow dismiss + clear capture UI).
   useEffect(() => {
@@ -145,6 +148,7 @@ export function DynamicIsland() {
             workflow={yap}
             screenshotPreview={screenshotPreview}
             capturing={capturing}
+            pointerInside={island.pointerInside}
             onCapture={() => void captureRegion()}
             onClearCapture={clearCapture}
             onDismiss={dismissYap}

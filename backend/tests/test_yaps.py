@@ -1159,18 +1159,35 @@ async def test_create_yap_with_image_describes_and_stores(
             self.data = data
 
     class _Query:
+        def __init__(self):
+            self._mode = "select"
+            self._payload: dict | None = None
+
         def insert(self, payload: dict):
+            self._mode = "insert"
             self._payload = payload
             return self
 
+        def select(self, *_a, **_k):
+            self._mode = "select"
+            return self
+
+        def eq(self, *_a, **_k):
+            return self
+
+        def gte(self, *_a, **_k):
+            return self
+
         async def execute(self):
-            row = {
-                "id": "yap-img-1",
-                "status": "ready",
-                **self._payload,
-            }
-            inserted.append(row)
-            return _Result([row])
+            if self._mode == "insert":
+                row = {
+                    "id": "yap-img-1",
+                    "status": "ready",
+                    **(self._payload or {}),
+                }
+                inserted.append(row)
+                return _Result([row])
+            return _Result([])
 
     class _Fake:
         def table(self, _name: str):
@@ -1249,14 +1266,37 @@ async def test_create_yap_with_social_screenshot(
             self.data = data
 
     class _Query:
+        def __init__(self):
+            self._mode = "select"
+            self._payload: dict | None = None
+
         def insert(self, payload: dict):
+            self._mode = "insert"
             self._payload = payload
             return self
 
+        def select(self, *_a, **_k):
+            self._mode = "select"
+            return self
+
+        def eq(self, *_a, **_k):
+            return self
+
+        def gte(self, *_a, **_k):
+            return self
+
         async def execute(self):
-            return _Result(
-                [{"id": "yap-social-1", "status": "ready", **self._payload}]
-            )
+            if self._mode == "insert":
+                return _Result(
+                    [
+                        {
+                            "id": "yap-social-1",
+                            "status": "ready",
+                            **(self._payload or {}),
+                        }
+                    ]
+                )
+            return _Result([])
 
     class _Fake:
         def table(self, _name: str):
@@ -1337,6 +1377,21 @@ async def test_create_yap_skips_insert_when_not_viewpoint(
             inserted.append(payload)
             raise AssertionError("insert should not be called")
 
+        def select(self, *_a, **_k):
+            return self
+
+        def eq(self, *_a, **_k):
+            return self
+
+        def gte(self, *_a, **_k):
+            return self
+
+        async def execute(self):
+            class _Result:
+                data = []
+
+            return _Result()
+
     class _Fake:
         def table(self, _name: str):
             return _Query()
@@ -1393,3 +1448,6 @@ async def test_create_yap_skips_insert_when_not_viewpoint(
     assert body["reference"] is not None
     assert "ON SCREEN [other]" in body["reference"]
     assert inserted == []
+    assert body["stats"] is not None
+    assert body["stats"]["streak"] == 0
+    assert len(body["stats"]["week"]) == 7
